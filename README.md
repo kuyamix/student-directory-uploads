@@ -1,25 +1,27 @@
-
 # Student Directory API
 
-A RESTful Node.js / Express + MongoDB API for managing student records, secured with JWT authentication and bcrypt password hashing. Includes image uploads handled by Multer and stored in Cloudinary. Built for the Lesson 5 Auth Lab and extended in Lesson 7.
+A RESTful API built with **Node.js, Express, and MongoDB** for managing student records. It features JWT-based authentication, bcrypt password hashing, protected CRUD operations, and image uploads using Multer and Cloudinary.
+
+Developed as part of the **Lesson 5 Authentication Lab** and extended in **Lesson 7 File Upload Lab**.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
-- [Setup](#setup)
+- [Installation and Setup](#installation-and-setup)
 - [Environment Variables](#environment-variables)
-- [API Reference](#api-reference)
-  - [Auth](#auth)
-  - [Students](#students-all-routes-require-auth)
-  - [Uploads](#uploads-require-auth)
+- [API Documentation](#api-documentation)
+  - [Authentication](#1-authentication)
+  - [Students](#2-student-management)
+  - [Image Uploads](#3-image-uploads)
 - [Data Models](#data-models)
-- [Auth Flow](#auth-flow)
+- [Authentication and Upload Workflow](#authentication-and-upload-workflow)
 - [Testing](#testing)
-- [Security Design Decisions](#security-design-decisions)
+- [Security Considerations](#security-considerations)
 - [Reflection](#reflection)
 - [Author](#author)
 - [License](#license)
@@ -28,182 +30,320 @@ A RESTful Node.js / Express + MongoDB API for managing student records, secured 
 
 ## Overview
 
-The Student Directory API lets an authenticated user:
+The **Student Directory API** provides a secure backend service for managing student information.
 
-- Register with an email and password.
-- Log in and receive a signed JWT.
-- Create, read, update, and delete student records.
-- Upload image files to Cloudinary.
+Users can register an account, authenticate using their credentials, and access protected endpoints to manage student records. The API also supports image uploads, with uploaded files stored in Cloudinary rather than on the local server.
 
-Passwords are hashed with **bcrypt** before they reach the database — plaintext is never stored. All student routes and upload routes require a valid **JWT** sent in the `Authorization: Bearer <token>` header. Tokens expire after one hour.
+Authentication is handled through JSON Web Tokens (JWT), while passwords are securely hashed using bcrypt before being stored in MongoDB.
+
+All student management and image upload endpoints require a valid JWT supplied through the HTTP Authorization header.
+
+### Key Features
+
+- **User Registration** – Create an account using an email address and password.
+- **User Authentication** – Log in and receive a signed JWT.
+- **Password Security** – Hash passwords using bcrypt before database storage.
+- **Student Management** – Perform Create, Read, Update, and Delete (CRUD) operations.
+- **Protected Routes** – Restrict access to authorized users.
+- **Image Uploads** – Upload images using Multer.
+- **Cloud Storage** – Store uploaded images through Cloudinary.
+- **Token Expiration** – JWT authentication tokens expire after one hour.
 
 ---
 
-## Tech Stack
+## Technology Stack
 
-| Layer | Choice |
+| Component | Technology |
 |---|---|
-| Runtime | Node.js 18+ |
-| Framework | Express 4 |
-| Database | MongoDB Atlas (Mongoose 8) |
-| Password hashing | bcryptjs |
-| Authentication | jsonwebtoken (JWT, HS256) |
-| File Uploads | Multer (memoryStorage) |
-| Cloud Storage | Cloudinary |
-| Config | dotenv |
+| Runtime Environment | Node.js 18+ |
+| Backend Framework | Express 4 |
+| Database | MongoDB Atlas |
+| ODM | Mongoose 8 |
+| Password Hashing | bcryptjs |
+| Authentication | JSON Web Token (JWT) |
+| Token Algorithm | HS256 |
+| File Upload Handling | Multer |
+| File Storage | Cloudinary |
+| Environment Configuration | dotenv |
 
 ---
 
 ## Project Structure
 
-```
+The project follows a modular structure to separate configuration, middleware, database models, and API routes.
+
+```text
 student-directory/
+│
 ├── config/
-│   └── cloudinary.js       # Cloudinary SDK configuration
+│   └── cloudinary.js
+│
 ├── middleware/
-│   ├── auth.js             # JWT verification middleware
-│   └── upload.js           # Multer memoryStorage & file filter
+│   ├── auth.js
+│   └── upload.js
+│
 ├── models/
-│   ├── Student.js          # Student schema
-│   └── User.js             # Auth user schema
+│   ├── Student.js
+│   └── User.js
+│
 ├── routes/
-│   ├── auth.js             # POST /register, POST /login
-│   ├── students.js         # Student CRUD (protected)
-│   └── upload.js           # Image uploads to Cloudinary (protected)
-├── .env                    # Secrets (git-ignored)
-├── .env.example            # Template (safe to commit)
+│   ├── auth.js
+│   ├── students.js
+│   └── upload.js
+│
+├── .env
+├── .env.example
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
-├── server.js               # Entry point
+├── server.js
 └── README.md
 ```
 
+### Directory Description
+
+| Directory / File | Purpose |
+|---|---|
+| `config/` | Contains external service configurations, including Cloudinary. |
+| `middleware/` | Handles JWT authentication and file upload validation. |
+| `models/` | Defines MongoDB schemas using Mongoose. |
+| `routes/` | Contains authentication, student, and upload endpoints. |
+| `.env` | Stores private environment variables and credentials. |
+| `.env.example` | Provides a template for required environment variables. |
+| `.gitignore` | Prevents sensitive and unnecessary files from being committed. |
+| `server.js` | Main application entry point. |
+| `package.json` | Contains project dependencies and npm scripts. |
+
 ---
 
-## Setup
+## Installation and Setup
 
-### 1. Clone and install
+Follow these instructions to run the API locally.
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/kuyamix/student-directory-uploads.git
+```
+
+Navigate to the project directory:
+
+```bash
 cd student-directory-uploads
+```
+
+### 2. Install Dependencies
+
+Install the required Node.js packages:
+
+```bash
 npm install
 ```
 
-### 2. Create `.env`
+### 3. Configure Environment Variables
 
-Copy the template and fill in real values:
+Create a `.env` file in the root directory.
+
+You can use `.env.example` as a template:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
+Open `.env` and provide your actual configuration values.
 
-```env
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/student_directory?retryWrites=true&w=majority
-JWT_SECRET=<generate_below>
-PORT=3000
-CLOUDINARY_CLOUD_NAME=your_cloud_name_here
-CLOUDINARY_API_KEY=your_api_key_here
-CLOUDINARY_API_SECRET=your_api_secret_here
-```
+See [Environment Variables](#environment-variables) for details.
 
-Generate a strong JWT secret:
+### 4. Configure MongoDB Atlas
 
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-```
+1. Create or log in to your MongoDB Atlas account.
+2. Create a database cluster.
+3. Create a database user with the necessary permissions.
+4. Configure Network Access to allow your development IP address.
+5. Copy your MongoDB connection string.
+6. Place the connection string in your `.env` file.
 
-> ⚠️ If your Atlas password contains characters like `@ : / ? # [ ] %`, URL-encode them (e.g. `@` → `%40`).
+### 5. Configure Cloudinary
 
-### 3. Configure external access
+1. Create an account at [Cloudinary](https://cloudinary.com/).
+2. Open your Cloudinary Dashboard.
+3. Locate your Cloud Name, API Key, and API Secret.
+4. Add these credentials to your `.env` file.
 
-- **MongoDB Atlas** — Ensure a database user exists and add your IP address to Network Access.
-- **Cloudinary** — Sign up at cloudinary.com. Go to your Dashboard and copy your Cloud Name, API Key, and API Secret.
+### 6. Start the Server
 
-### 4. Run
+Run the development server:
 
 ```bash
-npm run dev      # with nodemon (auto-restart)
-# or
-npm start        # plain node
+npm run dev
 ```
 
-Expected output:
+Alternatively, start the application normally:
 
+```bash
+npm start
 ```
+
+If everything is configured correctly, the terminal should display:
+
+```text
 ✅ MongoDB connected
 🚀 Server running on port 3000
 ```
+
+The API will be accessible at:
+
+`http://localhost:3000`
 
 ---
 
 ## Environment Variables
 
+The application uses dotenv to load configuration values from the `.env` file.
+
 | Variable | Required | Description |
 |---|---|---|
-| `MONGO_URI` | yes | MongoDB Atlas connection string |
-| `JWT_SECRET` | yes | Secret used to sign/verify JWTs |
-| `PORT` | no | HTTP port (defaults to `3000`) |
-| `CLOUDINARY_CLOUD_NAME` | yes | Cloudinary Cloud Name |
-| `CLOUDINARY_API_KEY` | yes | Cloudinary API Key |
-| `CLOUDINARY_API_SECRET` | yes | Cloudinary API Secret |
+| `MONGO_URI` | Yes | MongoDB Atlas connection string. |
+| `JWT_SECRET` | Yes | Secret key used to sign and verify JWTs. |
+| `PORT` | No | Server port. Defaults to `3000`. |
+| `CLOUDINARY_CLOUD_NAME` | Yes | Cloudinary account name. |
+| `CLOUDINARY_API_KEY` | Yes | Cloudinary API key. |
+| `CLOUDINARY_API_SECRET` | Yes | Cloudinary API secret. |
 
-All real values live in `.env`, which is **git-ignored**. `.env.example` is committed as a template.
+### Example Configuration
+
+```env
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/student_directory?retryWrites=true&w=majority
+
+JWT_SECRET=your_generated_secret
+
+PORT=3000
+
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+**Important:** Never commit your actual `.env` file or expose your database credentials, JWT secret, or Cloudinary API secret.
+
+Make sure `.env` is included in `.gitignore`.
+
+### Generating a JWT Secret
+
+You can generate a strong random secret using Node.js:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+Copy the generated value into `JWT_SECRET`.
+
+**Note:** If your MongoDB password contains special characters such as `@`, `:`, `/`, `?`, or `#`, URL-encode those characters in your connection string.
 
 ---
 
-## API Reference
+## API Documentation
 
-Base URL: `http://localhost:3000`
+### Base URL
 
-### Auth
-
-#### `POST /api/auth/register`
-Create a new user.
-
-**Request body**
-```json
-{ "email": "test@example.com", "password": "password123" }
+```text
+http://localhost:3000
 ```
-**Responses**
-| Status | Body | Meaning |
-|---|---|---|
-| `201` | `{ "id": "…", "email": "test@example.com", "role": "user" }` | Created |
-| `409` | `{ "error": "Email already registered" }` | Duplicate email |
-| `400` | `{ "error": "…" }` | Validation error |
 
-#### `POST /api/auth/login`
-Authenticate and receive a JWT.
+### 1. Authentication
 
-**Request body**
+Authentication endpoints allow users to register and log in to the application.
+
+#### Register a User
+
+`POST /api/auth/register`
+
+Creates a new user account.
+
+**Request Body:**
+
 ```json
-{ "email": "test@example.com", "password": "password123" }
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
 ```
-**Responses**
-| Status | Body | Meaning |
-|---|---|---|
-| `200` | `{ "token": "eyJhbGciOiJIUzI1NiIs…" }` | Success |
-| `401` | `{ "error": "Invalid credentials" }` | Bad email or password |
+
+**Successful Response (201 Created):**
+
+```json
+{
+  "id": "user_id",
+  "email": "test@example.com",
+  "role": "user"
+}
+```
+
+**Possible Responses:**
+
+| Status | Description |
+|---|---|
+| `201` | User successfully registered. |
+| `400` | Invalid or incomplete request data. |
+| `409` | Email address is already registered. |
+
+#### Login
+
+`POST /api/auth/login`
+
+Authenticates an existing user and returns a JWT.
+
+**Request Body:**
+
+```json
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+```
+
+**Successful Response (200 OK):**
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Possible Responses:**
+
+| Status | Description |
+|---|---|
+| `200` | Authentication successful. |
+| `400` | Invalid or incomplete request data. |
+| `401` | Invalid email or password. |
 
 ---
 
-### Students (All routes require auth)
+### 2. Student Management
 
-Every request must include:
-`Authorization: Bearer <token>`
+All student management endpoints require authentication.
+
+Include the JWT in the Authorization header:
+
+```http
+Authorization: Bearer <your_token>
+```
+
+#### Available Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/students` | Get all students (newest first) |
-| `GET` | `/api/students/:id` | Get a single student |
-| `POST` | `/api/students` | Create a student |
-| `PUT` | `/api/students/:id` | Update a student |
-| `DELETE` | `/api/students/:id` | Delete a student |
+| `GET` | `/api/students` | Retrieve all student records. |
+| `GET` | `/api/students/:id` | Retrieve a specific student. |
+| `POST` | `/api/students` | Create a new student record. |
+| `PUT` | `/api/students/:id` | Update an existing student. |
+| `DELETE` | `/api/students/:id` | Delete a student record. |
 
-**Student Request Body (POST/PUT)**
+#### Student Request Body
+
+For creating or updating a student:
+
 ```json
 {
   "name": "Jane Doe",
@@ -213,113 +353,238 @@ Every request must include:
 }
 ```
 
+**Example:** Creating a Student
+
+```http
+POST /api/students
+Authorization: Bearer <your_token>
+Content-Type: application/json
+```
+
+**Example Response:**
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "course": "CS",
+  "year": 2
+}
+```
+
+The actual response may include additional MongoDB-generated fields such as `_id`, `createdAt`, and `updatedAt`.
+
 ---
 
-### Uploads (Require auth)
+### 3. Image Uploads
 
-#### `POST /api/upload`
-Upload an image to Cloudinary.
+The API supports image uploads through Multer and Cloudinary.
 
-**Headers**
-- `Authorization: Bearer <token>`
+#### Upload an Image
 
-**Body**
-- Form-Data (`multipart/form-data`)
-- Field name: `file`
-- Allowed types: Images only (`image/*`)
-- Max size: 5MB
+`POST /api/upload`
 
-**Responses**
-| Status | Body | Meaning |
-|---|---|---|
-| `200` | `{ "url": "https://res.cloudinary.com/...", "publicId": "lesson7_uploads/abc123" }` | Upload successful |
-| `400` | `{ "error": "No file uploaded" }` | No file in request |
-| `400` | `{ "error": "Only image files are allowed" }` | File type rejected by Multer |
-| `401` | `{ "error": "No token provided" }` | Missing or invalid token |
+Uploads an image file to Cloudinary.
+
+**Required Headers:**
+
+```http
+Authorization: Bearer <your_token>
+```
+
+**Request Configuration:**
+
+| Setting | Requirement |
+|---|---|
+| Content Type | `multipart/form-data` |
+| Form Field | `file` |
+| Allowed Files | Image MIME types (`image/*`) |
+| Maximum File Size | 5 MB |
+| Authentication | Required |
+
+**Successful Response (200 OK):**
+
+```json
+{
+  "url": "https://res.cloudinary.com/...",
+  "publicId": "lesson7_uploads/abc123"
+}
+```
+
+**Possible Responses:**
+
+| Status | Description |
+|---|---|
+| `200` | Image successfully uploaded. |
+| `400` | No file uploaded. |
+| `400` | File type rejected by Multer. |
+| `401` | Missing or invalid authentication token. |
+
+**Upload Process:**
+
+1. Authenticate the request using JWT.
+2. Select an image file.
+3. Send the file using `multipart/form-data`.
+4. Multer validates the file and temporarily stores it in memory.
+5. The application sends the file buffer to Cloudinary.
+6. Cloudinary returns the image URL and public ID.
 
 ---
 
 ## Data Models
 
-### User
-```javascript
-{
-  email:     String,   // required, unique, lowercase
-  password:  String,   // required, bcrypt hash
-  role:      String,   // 'user' | 'admin', default 'user'
-  createdAt: Date,
-  updatedAt: Date
-}
-```
+The application uses two primary MongoDB collections: `users` and `students`.
 
-### Student
-```javascript
-{
-  name:      String,   // required
-  email:     String,   // required, unique, lowercase
-  course:    String,   // required
-  year:      Number,   // required, 1–5
-  createdAt: Date,
-  updatedAt: Date
-}
-```
+### User Model
+
+The User model stores account information and authentication credentials.
+
+| Attribute | Data Type | Description |
+|---|---|---|
+| `email` | String | Required, unique, lowercase email address. |
+| `password` | String | Required bcrypt password hash. |
+| `role` | String | User role: `user` or `admin`. Defaults to `user`. |
+| `createdAt` | Date | Account creation timestamp. |
+| `updatedAt` | Date | Last account update timestamp. |
+
+### Student Model
+
+The Student model stores student directory information.
+
+| Attribute | Data Type | Description |
+|---|---|---|
+| `name` | String | Required student name. |
+| `email` | String | Required, unique, lowercase email address. |
+| `course` | String | Required course or program. |
+| `year` | Number | Required academic year (1–5). |
+| `createdAt` | Date | Record creation timestamp. |
+| `updatedAt` | Date | Last record update timestamp. |
 
 ---
 
-## Auth & Upload Flow
+## Authentication and Upload Workflow
 
-1. **Register** — Server bcrypt-hashes the password and stores only the hash.
-2. **Login** — Server verifies password via `bcrypt.compare` and signs a 1-hour JWT.
-3. **Protected Requests** — Client sends `Authorization: Bearer <token>`. Middleware verifies the signature and attaches `req.user`.
-4. **Uploads** — Client sends an image via `multipart/form-data`. Multer stores the file in RAM (`memoryStorage`), and the route streams it directly to Cloudinary. The Cloudinary URL is returned to the client.
+The API uses a token-based authentication process to protect sensitive endpoints.
+
+### Authentication Workflow
+
+1. **Registration:** A user submits an email and password. The server hashes the password using bcrypt before saving the account in MongoDB.
+2. **Login:** The server retrieves the user account and verifies the submitted password using `bcrypt.compare()`.
+3. **Token Generation:** If authentication succeeds, the server generates a signed JWT with a one-hour expiration.
+4. **Protected Requests:** The client includes the JWT in the Authorization header when accessing protected endpoints.
+5. **Token Verification:** Authentication middleware verifies the token before allowing access to protected routes.
+
+### Image Upload Workflow
+
+1. The authenticated client submits an image through a multipart/form-data request.
+2. Multer processes the uploaded file using `memoryStorage()`.
+3. The middleware checks the file type and maximum file size.
+4. The file buffer is transferred to Cloudinary using its upload stream.
+5. Cloudinary stores the image and returns its URL and public ID.
+6. The API sends the upload information back to the client.
 
 ---
 
 ## Testing
 
-### Manual test flow (Thunder Client / Postman)
+The API can be tested using **Postman** or **Thunder Client** in Visual Studio Code.
 
-| # | Method | Endpoint | Header | Body | Expected |
-|---|---|---|---|---|---|
-| 1 | POST | `/api/auth/register` | — | `{"email":"test@example.com","password":"password123"}` | `201` |
-| 2 | POST | `/api/auth/login` | — | `{"email":"test@example.com","password":"password123"}` | `200` + token |
-| 3 | GET | `/api/students` | *(none)* | — | `401` |
-| 4 | POST | `/api/upload` | `Bearer {{token}}` | Form-Data `file` (image) | `200` + URL |
-| 5 | POST | `/api/upload` | `Bearer {{token}}` | Form-Data `file` (txt) | `400` error |
-| 6 | POST | `/api/upload` | *(none)* | Form-Data `file` (image) | `401` |
+### Recommended Manual Test Cases
+
+| # | Method | Endpoint | Authentication | Expected Result |
+|---|---|---|---|---|
+| 1 | POST | `/api/auth/register` | Not required | `201 Created` |
+| 2 | POST | `/api/auth/login` | Not required | `200 OK` + JWT |
+| 3 | GET | `/api/students` | No token | `401 Unauthorized` |
+| 4 | GET | `/api/students` | Valid token | `200 OK` |
+| 5 | POST | `/api/students` | Valid token | Student created |
+| 6 | POST | `/api/upload` | Valid token + image | `200 OK` + image URL |
+| 7 | POST | `/api/upload` | Valid token + TXT file | `400 Bad Request` |
+| 8 | POST | `/api/upload` | No token | `401 Unauthorized` |
+
+### Testing Image Uploads
+
+In Postman or Thunder Client:
+
+1. Select the `POST` method.
+2. Enter `http://localhost:3000/api/upload`.
+3. Add the following Authorization header:
+
+   ```http
+   Authorization: Bearer <your_token>
+   ```
+
+4. Select the **Body** tab.
+5. Choose **Form-Data**.
+6. Set the key to `file`.
+7. Change its type from Text to File.
+8. Select an image and send the request.
+
+A successful upload should return the Cloudinary image URL and public ID.
 
 ---
 
-## Security Design Decisions
+## Security Considerations
 
-- **All routes protected** — Reads and writes to the student directory require auth to prevent PII leaks and spam injection.
-- **Generic login errors** — Prevents email enumeration.
-- **No password in responses** — The API never returns the hashed or plaintext password.
-- **Secrets in `.env`** — `.env` is ignored; `.env.example` is committed with placeholders.
-- **Multer `memoryStorage`** — Files are held in RAM, not written to disk. This prevents local server storage from filling up and avoids the overhead of disk I/O.
-- **File Filtering** — Multer rejects any file that does not have an `image/*` MIME type, preventing malicious file uploads.
+The application implements several security measures to protect user credentials, student information, and uploaded files.
+
+| Security Measure | Implementation |
+|---|---|
+| Password Hashing | bcryptjs hashes passwords before database storage. |
+| JWT Authentication | Protects student and upload endpoints. |
+| Token Expiration | JWTs expire after one hour. |
+| Generic Login Errors | Prevents revealing whether an email address is registered. |
+| Password Protection | Passwords and password hashes are excluded from API responses. |
+| Environment Variables | Sensitive credentials are stored in `.env`. |
+| File Validation | Multer checks uploaded file MIME types and file size. |
+| Cloud Storage | Uploaded images are stored in Cloudinary instead of local server storage. |
+
+**Additional Security Notes:**
+
+- MIME type validation alone does not guarantee that a file is a genuine or safe image. Production applications should also inspect file signatures and consider image re-encoding.
+- Multer's memory storage avoids unnecessary disk operations, but uploaded files consume server RAM. File-size limits and upload rate limits help prevent resource exhaustion.
+- JWT secrets and Cloudinary credentials should never be exposed in source code or public repositories.
 
 ---
 
 ## Reflection
 
 ### 1. Why is it dangerous to store passwords in plain text?
-If a database is compromised, plain-text passwords give attackers immediate access to every user's account. Because people reuse passwords, this cascades into breaches on other sites. Hashing (bcrypt) makes the stored value irreversible and adds a unique salt per password, neutralizing rainbow tables.
+
+Storing passwords in plain text is dangerous because anyone who gains access to the database can immediately read users' passwords. This can also affect other accounts if users reuse the same password across different websites.
+
+Using bcrypt provides an additional layer of security by hashing passwords with a unique salt. Instead of storing the original password, the database stores its hash, making it significantly more difficult for attackers to recover the original credentials.
 
 ### 2. Why do we return the same error for "user not found" and "wrong password"?
-Returning `401 Invalid credentials` for both prevents **email enumeration**. An attacker probing the login endpoint cannot discover whether an email is registered, which keeps them from building target lists for phishing or credential stuffing.
 
-### 3. Why use `memoryStorage` instead of `diskStorage` for Cloudinary?
-We use `memoryStorage` because Cloudinary is a cloud service, so there is no need to permanently save the file to our server's hard drive. `memoryStorage` holds the file temporarily in RAM as a buffer, allowing us to stream it directly to Cloudinary via `upload_stream`. If we used `diskStorage`, the server would have to write the file to disk, read it back to send to the cloud, and then delete the local file. Using `memoryStorage` avoids unnecessary disk I/O and prevents the server's storage from filling up with orphaned files.
+Returning the same error message, such as `401 Invalid credentials`, prevents attackers from determining whether a particular email address is registered in the system.
+
+This security practice is called preventing **email enumeration**. It makes it more difficult for attackers to identify existing accounts and target them through phishing or credential-based attacks.
+
+### 3. Why use `memoryStorage()` instead of `diskStorage()` for Cloudinary?
+
+We use `memoryStorage()` because the application uploads files directly to Cloudinary, so permanently saving them on the local server is unnecessary.
+
+Multer temporarily stores the uploaded file as a buffer in RAM. The application can then transfer that buffer directly to Cloudinary using its `upload_stream()` method.
+
+Compared with `diskStorage()`, this approach avoids unnecessary disk operations, eliminates the need to manage temporary local files, and simplifies the upload process.
+
+However, memory storage also requires proper file-size restrictions because uploaded files consume server memory while being processed.
 
 ---
 
 ## Author
 
 **Kuyamix**
-Lesson 5 & 7 Labs — Student Directory API
 
+Student Directory API  
+Lesson 5 – Authentication Lab  
+Lesson 7 – File Upload Lab
 
+---
 
-MIT
-```
+## License
+
+This project is licensed under the **MIT License**.
+
+You are free to use, modify, and distribute this project in accordance with the terms of the license.
